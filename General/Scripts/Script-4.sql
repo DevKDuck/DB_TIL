@@ -362,3 +362,249 @@ SELECT * FROM ALL_TABLES;
 --권한 가진 사용자만 조회 가능
 --SELECT * FROM DBA_TABLES;
 --SELECT * FROM DBA_USERS;
+
+SELECT * FROM USER INDEXES;
+
+-- 테이블 구조만 복사 
+CREATE TABLE emp_idx AS
+SELECT * FROM EMP WHERE 1 <> 1 ;
+
+DELETE FROM emp_idx;
+
+COMMIT;
+
+SELECT  job , count(*)
+FROM emp_idx
+GROUP BY job;
+
+SELECT *
+FROM EMP_IDX WHERE job = 'SALESMAN';
+
+SELECT count(*) FROM EMP_IDX WHERE job = 'PRESIDENT';
+
+--데이터 분포가 작을 경우(0에 가까울 경우) 인덱스르 주면 효율적이게 찾을 수 있다.
+-- empno
+
+UPDATE emp_idx SET newno = empno;
+
+COMMIT;
+
+--색인이 없음
+SELECT * FROM EMP_IDX ei 
+WHERE NEWNO = 25000;
+
+--색인이 있음 
+SELECT * FROM EMP_IDX ei 
+WHERE EMPNO = 300000;
+
+
+--트랜잭션이 아니기 때문에 바로 실행됨
+--인덱스 생성
+-- 검색에 관련된 작업에는 넣어주는게 좋다
+-- 데이터의 분포가 넓게 퍼져 있어야 인덱스 사용하기 효과적임 
+CREATE INDEX emp_idx_newno ON emp_idx (newno);
+
+-- 인덱스 제거
+DROP INDEX emp_idx_newno;
+
+
+UPDATE emp_idx SET newno = MOD(empno,35000);
+
+
+CREATE INDEX emp_idx_newno ON emp_idx (newno,job);
+
+--두개를 이용해서 인덱스 만들기~ 
+SELECT * FROM EMP_IDX ei 
+WHERE NEWNO = 25000 AND job = 'SALESMAN';
+
+CREATE INDEX emp_idx_newno ON emp_idx (job, newno);
+
+/*
+ * index란?
+ * 인덱스로 사용시 가장 좋은 경우: 값의 종류가 많아서 , 값의 건수는 작을 수록 좋다.
+ * 언제 사용되는가? 조회할때 빠른 검색, 그룹지을때에도 사용 됨
+ * 방식:단일 인덱스, 
+ * 결합 인덱스, 복합 인덱스: 검색시 오른쪽에서 부터 생략될 수 있다. 
+ * , 함수 기반 ,
+ *  비트맵 : 필드 안에 값의 종류가 적을 경우
+ */
+
+
+--뷰
+SELECT * FROM (
+-- 인라인 뷰  
+	SELECT * FROM EMP_IDX WHERE  NEWNO = 2000
+)
+WHERE ename = 'MARTIN'
+;
+
+--뷰 만들수 있는 권한 주기
+GRANT CREATE VIEW TO BITUSER;
+
+--뷰만들기
+CREATE VIEW vw_emp_idx_2000 AS (
+	SELECT empno, ename, job FROM EMP_IDX WHERE  NEWNO = 2000
+);
+
+--필드명을 바꿔서도 가능
+-- 특정 컬럼을 오픈하긴 하되 필드명을 변경해서 오픈하고 컬럼을 보이지 않게 할 수 있어서 보안성이 높아짐
+CREATE VIEW vw_emp_idx_2000 AS (
+	SELECT empno 사번, ename 이름 , job 직책 FROM EMP_IDX WHERE  NEWNO = 2000
+);
+
+--뷰를 이용하여 검색 
+SELECT * FROM VW_EMP_IDX_2000
+;
+
+--뷰 삭제 
+DROP VIEW VW_EMP_IDX_2000;
+
+
+--뷰가 존재할 경우 오류가 발생되기 때문에 변경을 주려고 할때
+CREATE OR REPLACE VIEW vw_emp_idx_2000 AS (
+	SELECT empno 사번, ename 이름 , job 직책 FROM EMP_IDX WHERE  NEWNO = 2000
+);
+
+SELECT rowid, rownum, empno, ename, job FROM EMP_IDX;
+
+-- 데이터베이스에서 데이터를 가져올때
+-- 1.구문분석 2.실행 3.인출(fetch)를 한다.
+-- rownum 은 패치 할때 가져오는 번호이다.
+-- 그래서 가져오는 번호가 10 미만인 것들을 지정하고 싶을 경우
+-- rownum < 10을 쓰면 됨
+-- SQLDeveloper에서는 50개가 기본값이고 dbeaver는 200개가 기본값으로 되어 있다.
+
+SELECT rownum, empno, ename,mgr
+FROM emp_idx
+WHERE rownum < 10
+ORDER BY EMPNO;
+--rownum은 패치가 될때 결정됨
+
+
+/*
+ * 1page에 10건을 가져오겠다............(empno 순 1~10)
+	2page에도 10건 (empno 순11~20)
+	10page에도 10건
+ */
+
+
+SELECT rownum, empno, ename,mgr
+FROM emp_idx
+WHERE empno BETWEEN  101 AND 110
+ORDER BY EMPNO;
+
+-- rownum은 조건절로 사용하면 참일경우에만 fetch를 진행함
+-- 거짓이 되는 순간 fetch를 멈춤
+
+--참인경우
+SELECT rownum, empno, ename,mgr
+FROM emp_idx
+WHERE rownum BETWEEN  1 AND 10
+ORDER BY empno;
+
+
+-- 거짓인경우 (fetch를 아예하지 않는다)
+-- rownum을 조건절로 사용할때 1부터 시작해서 걍 안나옴
+SELECT rownum, empno, ename,mgr
+FROM emp_idx
+WHERE rownum BETWEEN  11 AND 20
+ORDER BY empno;
+
+
+SELECT  COUNT(*)
+FROM emp_idx
+WHERE job = 'SALESMAN';
+
+
+-- 매우 중요 *************************
+-- 가상의 순번을 만들어 줘야함
+
+-- 부분범위 패치 (오라클에서 페이징 하는 방법)
+SELECT 
+	rnum, EMPNO, ENAME , job, mgr
+FROM(
+	SELECT rownum rnum,  EMPNO, ENAME , job, mgr
+	FROM emp_idx
+	WHERE job = 'SALESMAN'
+	AND rownum <= 10010
+	ORDER BY EMPNO
+)
+WHERE rnum >= 10001;
+
+/*
+ * 브라우저(사용자 시스템)    web(서버) ----> DB
+ * 
+ * UI + DATA 로 구성된 화면
+ * html로 구성해서 브라우저에 화면 출력 했을경우
+ * 이거에 대한 최대시간 3초여야 함
+ * 3초뒤에면 사용자가 나감
+ * 그래서 데이터베이스에서 조회는 0.1초안에 되어야함
+ * 일년통게 이런거는 예외
+ * 
+ */
+
+
+
+--시퀀스 발급
+CREATE SEQUENCE SEQ_EMP INCREMENT BY 1
+START WITH 400000 MAXVALUE 9999999999 MINVALUE 0 NOCYCLE;
+
+
+SELECT * FROM USER_sequences;
+
+SELECT seq_emp.nextval FROM dual;
+
+SELECT seq_emp.CURRVAL FROM dual;
+
+-- 부서번호 관련 용도 sequence 생성
+CREATE SEQUENCE SEQ_DEPT INCREMENT BY 10
+START WITH 10 MAXVALUE 90 MINVALUE 0 NOCYCLE;
+
+DROP SEQUENCE SEQ_DEPT;
+
+CREATE TABLE dept_seq AS
+SELECT * FROM dept WHERE 1 <> 1;
+
+--DEPT_SEQ에 부서 정보 추가
+-- 부서번호가 고정된 게 아님 
+INSERT INTO DEPT_SEQ (DEPTNO, dname, loc)
+VALUES (SEQ_DEPT.nextval, 'DATABASE', '서울');
+
+COMMIT;
+
+--bituser에게 동의어 생성할 수있는 권한 부여
+GRANT CREATE synonym TO bituser;
+-- 접근 제어 public 권한 부여
+GRANT CREATE public synonym TO bituser;
+
+CREATE synonym EI FOR EMP_IDX;
+
+SELECT * FROM emp_idx;
+
+SELECT * FROM EI;
+
+
+
+SELECT OWNER, CONSTRAINT_NAME, CONSTRAINT_TYPE, TABLE_NAME
+FROM USER_CONSTRAINTS ;
+
+
+CREATE TABLE table_notnull (
+   login_id varchar2(20) NOT NULL,
+   login_pwd varchar2(20) NOT NULL,
+   tel varchar2(20)
+);
+INSERT INTO  TABLE_NOTNULL VALUES('user01', '1004', null);
+
+COMMIT;
+
+ALTER  TABLE TABLE_NOTNULL MODIFY(tel NOT_NULL);
+
+UPDATE TABLE_NOTNULL SET tel = ' ';
+
+COMMIT;
+
+-- emp 테이블에 FK 인 DEPTNO 가 삭제되면 DEPT 테이블의 DEPTNO가 null 로 설정하게 하기
+-- set null 대신 CASCADE를 하면 같이 부모 자식 같이 삭제 
+ALTER  TABLE emp ADD CONSTRAINT EMP_DEPT_FK FOREIGN KEY (DEPTNO)
+REFERENCES DEPT(DEPTNO) ON DELETE SET NULL;

@@ -129,3 +129,100 @@ DECLARE
         DBMS_OUTPUT.PUT_LINE('SQLERRM' || SQLERRM));
     END;
     /
+    
+    
+    --계좌 관리 테이블 생성 
+CREATE TABLE account (
+   ano varchar2(20) PRIMARY key,
+   owner varchar2(20) NOT null,
+   balance NUMBER NOT NULL
+);
+
+--계좌 테이블에 자료 1건 등록 
+insert INTO account VALUES ('111-11-1111', '홍길동', 1000);
+
+
+
+declare 
+     --잔고 저장 변수 
+     v_balance number;
+     
+     --출금 할 금액 
+     v_money number;
+     
+     --잔고 부족 예외 선언 
+     INSUFFICIENT_EXCEPT EXCEPTION;
+begin 
+    -- 출금 할 금액 설정 
+    v_money := 10000;
+    
+    --잔고를 얻는다 
+    select balance into v_balance from account where ano='111-11-1111';    
+    if v_balance - v_money < 0 then 
+        --잔고 부족 예외 발생 
+        raise INSUFFICIENT_EXCEPT;
+    end if;
+    --잔고 감소 
+    update account set balance = balance - v_money where ano='111-11-1111';    
+    
+    DBMS_OUTPUT.PUT_LINE('정상 처리');
+    
+    Exception 
+        when INSUFFICIENT_EXCEPT then 
+            DBMS_OUTPUT.PUT_LINE('예외처리 : 잔고가 부족하여 출금을 할 수 없습니다');
+        when others then 
+            DBMS_OUTPUT.PUT_LINE('예외처리 : 사전 정의 외 오류 발생');
+            DBMS_OUTPUT.PUT_LINE('SQLCODE : ' || to_char(SQLCODE));
+            DBMS_OUTPUT.PUT_LINE('SQLERRM : ' || SQLERRM);
+end;
+
+
+-- 저장 프로시저 생성
+-- 한번 컴파일만 컴파일해서 유용  
+CREATE OR REPLACE PROCEDURE PRO_PARAM_IN
+(
+	param1 IN NUMBER,
+	param2 NUMBER,
+	param3 NUMBER := 3,
+	param4 NUMBER DEFAULT 4
+)
+
+IS
+BEGIN
+	DBMS_OUTPUT.PUT_LINE('param1 : ' || param1);
+	DBMS_OUTPUT.PUT_LINE('param2 : ' || param2);
+	DBMS_OUTPUT.PUT_LINE('param3 : ' || param3);
+	DBMS_OUTPUT.PUT_LINE('param4 : ' || param4);
+END;
+
+/*
+ * SQL> execute pro_param_in(1,2,9,8);
+param1 : 1
+param2 : 2
+param3 : 9
+param4 : 8
+
+
+SQL> execute pro_param_in(1,2);  
+param1 : 1
+param2 : 2
+param3 : 3
+param4 : 4
+
+SQL> execute pro_param_in(param1=>10,param2=>20);
+param1 : 10
+param2 : 20
+param3 : 3
+param4 : 4
+
+SQL> execute pro_param_in(1);
+BEGIN pro_param_in(1); END;
+
+      *
+ERROR at line 1:
+ORA-06550: line 1, column 7:
+PLS-00306: wrong number or types of arguments in call to 'PRO_PARAM_IN'
+ORA-06550: line 1, column 7:
+PL/SQL: Statement ignored
+ */
+

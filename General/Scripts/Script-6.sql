@@ -226,3 +226,22 @@ ORA-06550: line 1, column 7:
 PL/SQL: Statement ignored
  */
 
+--프로시저 오류 확인
+CREATE OR REPLACE PROCEDURE PRO_ERR
+IS
+	err_no NUMBER;
+BEGIN
+	err_no = 100;
+
+	DBMS_OUTPUT.PUT_LINE('err-no' || err_no);
+END ;
+
+--오류 수정
+CREATE OR REPLACE PROCEDURE PRO_ERR
+IS
+	err_no NUMBER;
+BEGIN
+	err_no = 100;
+
+	DBMS_OUTPUT.PUT_LINE('err-no' || err_no);
+END ;

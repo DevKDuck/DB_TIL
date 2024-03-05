@@ -98,6 +98,7 @@ CLOSE c1;
         
   END;
 /
+
     
     
 DECLARE
@@ -245,3 +246,120 @@ BEGIN
 
 	DBMS_OUTPUT.PUT_LINE('err-no' || err_no);
 END ;
+
+
+-- 함수 세금을 제한 실수령액 함수를 이용해보기
+CREATE OR REPLACE FUNCTION FUNC_AFTERTAX(
+ sal IN NUMBER
+) 
+RETURN NUMBER
+IS
+	tax NUMBER := 0.05;
+
+BEGIN
+	RETURN (ROUND(sal - (sal * tax)));
+END FUNC_AFTERTAX;
+
+--함수 실행
+SQL> DECLARE
+  2  aftertax NUMBER;
+  3  BEGIN
+  4  aftertax := func_aftertax(3000);
+  5  DBMS_OUTPUT.PUT_LINE('after-tax income: ' || aftertax);
+  6  end;
+  7  /
+  
+--after-tax income: 2850
+
+--PL/SQL procedure successfully completed.
+  
+--  sql에서 함수 사용하기
+SELECT func_aftertax(3000) FROM DUAL;
+-- 함수에 정의한 파라미터와 자료형이 일치하면 내장 함수와 같이 특정 열 또는 연산 가공된 데이터 입력 가능 
+SELECT EMPNO, ENAME, SAL, FUNC_AFTERTAX(SAL) AS AFtERTAX FROM EMP;
+--함수 삭제
+DROP FUNCTION func_aftertax;
+
+
+
+
+
+--OUT 모드 파라미터 사용하기
+DECLARE
+	v_ename EMP.ENAME%TYPE;
+	v_sal EMP.SAL%TYPE;
+BEGIN
+		pro_param_out(7788, v_ename,v_sal);
+	DBMS_OUTPUT.PUT_LINE('ENAME: ' || v_ename);
+	DBMS_OUTPUT.PUT_LINE('SAL: ' || v_sal);
+END;
+
+/*
+ * SQL> DECLARE
+  2  v_ename EMP.ENAME%TYPE;
+  3  v_sal EMP.SAL%TYPE;
+  4  BEGIN
+  5  pro_param_out(7788, v_ename,v_sal);
+  6  DBMS_OUTPUT.PUT_LINE('ENAME: ' || v_ename);
+  7  DBMS_OUTPUT.PUT_LINE('SAL: ' || v_sal);
+  8  end;
+  9  /
+ENAME: SCOTT
+SAL: 3000
+
+PL/SQL procedure successfully completed.
+ */
+
+
+--inout 모드 파라미터
+CREATE OR REPLACE PROCEDURE PRO_PARAM_INOUT
+(
+	inout_no IN OUT NUMBER
+)
+IS
+BEGIN
+	inout_no := inout_no * 2;
+END PRO_PARAM_INOUT;
+
+--사용
+DECLARE
+	no NUMBER;
+BEGIN
+	no := 5;
+	pro_param_inout(no);
+	DBMS_OUTPUT.PUT_LINE('no: ' || no);
+END;
+
+
+
+DECLARE
+	v_deptno DEPT.DEPTNO%TYPE;
+	v_dname DEPT.DNAME%TYPE;
+	v_loc DEPT.loc%TYPE;
+BEGIN
+	pro_dept_in(10,v_deptno,v_)
+	
+	
+	
+	
+	
+	
+	create table users (
+    userid varchar2(50) primary key,
+    username varchar2(50) not null,
+    userpassword varchar2(50) not null,
+    userage number(3) not null,
+    useremail varchar2(50) not null
+);    
+	
+	
+create table boards (
+    bno number primary key,
+    btitle varchar2(100) not null,
+    bcontent clob not null,
+    bwriter varchar2(50) not null,
+    bdate date default sysdate
+);
+	
+
+create SEQUENCE seq_bno nocache;
